@@ -14,16 +14,184 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audit_logs: {
+        Row: {
+          action: string
+          by_user: string | null
+          created_at: string
+          id: string
+          meta: Json | null
+          order_id: string | null
+        }
+        Insert: {
+          action: string
+          by_user?: string | null
+          created_at?: string
+          id?: string
+          meta?: Json | null
+          order_id?: string | null
+        }
+        Update: {
+          action?: string
+          by_user?: string | null
+          created_at?: string
+          id?: string
+          meta?: Json | null
+          order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deadline: string | null
+          dimensions: string | null
+          id: string
+          material: string | null
+          notes: string | null
+          order_number: number
+          part_name: string
+          quantity: number
+          status: Database["public"]["Enums"]["order_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          dimensions?: string | null
+          id?: string
+          material?: string | null
+          notes?: string | null
+          order_number?: number
+          part_name: string
+          quantity: number
+          status?: Database["public"]["Enums"]["order_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          dimensions?: string | null
+          id?: string
+          material?: string | null
+          notes?: string | null
+          order_number?: number
+          part_name?: string
+          quantity?: number
+          status?: Database["public"]["Enums"]["order_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          name?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      quality_logs: {
+        Row: {
+          author: string | null
+          created_at: string
+          id: string
+          note: string
+          order_id: string
+        }
+        Insert: {
+          author?: string | null
+          created_at?: string
+          id?: string
+          note: string
+          order_id: string
+        }
+        Update: {
+          author?: string | null
+          created_at?: string
+          id?: string
+          note?: string
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quality_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "user" | "ops" | "admin"
+      order_status:
+        | "Received"
+        | "In Review"
+        | "Accepted"
+        | "Rejected"
+        | "Completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +318,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["user", "ops", "admin"],
+      order_status: [
+        "Received",
+        "In Review",
+        "Accepted",
+        "Rejected",
+        "Completed",
+      ],
+    },
   },
 } as const
