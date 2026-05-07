@@ -55,7 +55,7 @@ function Index() {
         </section>
 
         <section className="mt-12 rounded-xl border border-border/60 p-6 font-mono text-xs text-muted-foreground">
-          Backend: Express + MongoDB + JWT + Socket.IO. See <code className="text-primary">backend/README.md</code> for setup. Configure the API URL in Settings after the backend is running.
+          Powered by Lovable Cloud — Postgres, auth, edge functions and Lovable AI Gateway. No setup required.
         </section>
       </main>
     </div>

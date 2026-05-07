@@ -1,18 +1,34 @@
 import { Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { getAuth, setAuth, type AuthState } from "@/lib/nova-api";
+import { supabase } from "@/integrations/supabase/client";
+import { getProfile, getRoles, highestRole, type SessionInfo } from "@/lib/nova";
 
 export function TopNav() {
   const router = useRouter();
-  const [auth, setLocal] = useState<AuthState | null>(null);
+  const [session, setSession] = useState<SessionInfo | null>(null);
 
   useEffect(() => {
-    setLocal(getAuth());
+    let active = true;
+    const load = async (uid: string | undefined) => {
+      if (!uid) return active && setSession(null);
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) return active && setSession(null);
+      const [profile, roles] = await Promise.all([getProfile(uid), getRoles(uid)]);
+      if (active) setSession({ user: u.user, profile, roles, role: highestRole(roles) });
+    };
+
+    supabase.auth.getSession().then(({ data }) => load(data.session?.user.id));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      load(s?.user.id);
+    });
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
-  const logout = () => {
-    setAuth(null);
-    setLocal(null);
+  const logout = async () => {
+    await supabase.auth.signOut();
     router.navigate({ to: "/login" });
   };
 
@@ -26,54 +42,20 @@ export function TopNav() {
           </span>
         </Link>
         <nav className="flex items-center gap-1 text-sm">
-          {auth && (
+          {session && (
             <>
-              <Link
-                to="/chat"
-                className="rounded-md px-3 py-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition"
-                activeProps={{ className: "rounded-md px-3 py-2 text-foreground bg-secondary" }}
-              >
-                Chat
-              </Link>
-              <Link
-                to="/dashboard"
-                className="rounded-md px-3 py-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition"
-                activeProps={{ className: "rounded-md px-3 py-2 text-foreground bg-secondary" }}
-              >
-                Dashboard
-              </Link>
-              <Link
-                to="/settings"
-                className="rounded-md px-3 py-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition"
-                activeProps={{ className: "rounded-md px-3 py-2 text-foreground bg-secondary" }}
-              >
-                Settings
-              </Link>
+              <Link to="/chat" className="rounded-md px-3 py-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition" activeProps={{ className: "rounded-md px-3 py-2 text-foreground bg-secondary" }}>Chat</Link>
+              <Link to="/dashboard" className="rounded-md px-3 py-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition" activeProps={{ className: "rounded-md px-3 py-2 text-foreground bg-secondary" }}>Dashboard</Link>
               <span className="ml-3 hidden text-xs text-muted-foreground md:inline">
-                {auth.user.email} · {auth.user.role}
+                {session.user.email} · {session.role}
               </span>
-              <button
-                onClick={logout}
-                className="ml-2 rounded-md border border-border px-3 py-2 text-xs hover:bg-secondary transition"
-              >
-                Logout
-              </button>
+              <button onClick={logout} className="ml-2 rounded-md border border-border px-3 py-2 text-xs hover:bg-secondary transition">Logout</button>
             </>
           )}
-          {!auth && (
+          {!session && (
             <>
-              <Link
-                to="/login"
-                className="rounded-md px-3 py-2 hover:bg-secondary transition"
-              >
-                Login
-              </Link>
-              <Link
-                to="/register"
-                className="rounded-md bg-primary px-3 py-2 text-primary-foreground hover:opacity-90 transition"
-              >
-                Sign up
-              </Link>
+              <Link to="/login" className="rounded-md px-3 py-2 hover:bg-secondary transition">Login</Link>
+              <Link to="/register" className="rounded-md bg-primary px-3 py-2 text-primary-foreground hover:opacity-90 transition">Sign up</Link>
             </>
           )}
         </nav>
