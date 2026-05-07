@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { TopNav } from "@/components/TopNav";
-import { api, getAuth } from "@/lib/nova-api";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/chat")({ component: ChatPage });
 
@@ -9,11 +9,12 @@ type Msg = { role: "user" | "assistant"; content: string; data?: any };
 
 function ChatPage() {
   const router = useRouter();
+  const [ready, setReady] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: "assistant",
       content:
-        "Hi — I'm NOVA. Try:\n• \"I need 200 titanium flanges, 80mm bore, by July 20\"\n• \"Mark order #1 as accepted\"\n• \"Quality update on order #1 — passed visual inspection\"",
+        "Hi — I'm NOVA. Try:\n• \"I need 200 titanium flanges, 80mm bore, by July 20\"\n• \"Mark order #1001 as accepted\"\n• \"Quality update on order #1001 — passed visual inspection\"\n• \"Show me all accepted orders\"",
     },
   ]);
   const [input, setInput] = useState("");
@@ -21,7 +22,10 @@ function ChatPage() {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!getAuth()) router.navigate({ to: "/login" });
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) router.navigate({ to: "/login" });
+      else setReady(true);
+    });
   }, [router]);
 
   useEffect(() => {
@@ -36,17 +40,20 @@ function ChatPage() {
     setMessages((m) => [...m, { role: "user", content: text }]);
     setLoading(true);
     try {
-      const res = await api<{ reply: string; order?: any; items?: any[]; parsed: any }>("/api/chat", {
-        method: "POST",
-        body: JSON.stringify({ message: text }),
+      const { data, error } = await supabase.functions.invoke("nova-chat", {
+        body: { message: text },
       });
-      setMessages((m) => [...m, { role: "assistant", content: res.reply, data: res }]);
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      setMessages((m) => [...m, { role: "assistant", content: data.reply || "OK", data }]);
     } catch (err: any) {
       setMessages((m) => [...m, { role: "assistant", content: `⚠️ ${err.message}` }]);
     } finally {
       setLoading(false);
     }
   };
+
+  if (!ready) return null;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -95,8 +102,8 @@ function Bubble({ msg }: { msg: Msg }) {
           <pre className="mt-3 max-h-48 overflow-auto rounded-md bg-background/60 p-2 font-mono text-[11px] text-muted-foreground">
 {JSON.stringify(
   {
-    orderNumber: msg.data.order.orderNumber,
-    partName: msg.data.order.partName,
+    order_number: msg.data.order.order_number,
+    part_name: msg.data.order.part_name,
     material: msg.data.order.material,
     quantity: msg.data.order.quantity,
     dimensions: msg.data.order.dimensions,
@@ -108,11 +115,11 @@ function Bubble({ msg }: { msg: Msg }) {
 )}
           </pre>
         )}
-        {Array.isArray(msg.data?.items) && msg.data.items.length > 0 && (
+        {Array.isArray(msg.data?.orders) && msg.data.orders.length > 0 && (
           <ul className="mt-3 space-y-1 text-xs">
-            {msg.data.items.map((o: any) => (
-              <li key={o._id} className="font-mono">
-                #{o.orderNumber} · {o.quantity}× {o.partName} · {o.status}
+            {msg.data.orders.map((o: any) => (
+              <li key={o.id} className="font-mono">
+                #{o.order_number} · {o.quantity}× {o.part_name} · {o.status}
               </li>
             ))}
           </ul>

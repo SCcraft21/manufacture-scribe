@@ -1,0 +1,4 @@
+project_id = "qczliaelmmymznjfxhtx"
+
+[functions.nova-chat]
+verify_jwt = true

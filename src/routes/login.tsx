@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { TopNav } from "@/components/TopNav";
-import { api, setAuth } from "@/lib/nova-api";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
@@ -16,19 +16,10 @@ function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    try {
-      const res = await api<{ user: any; token: string }>("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-        auth: false,
-      });
-      setAuth({ token: res.token, user: res.user });
-      router.navigate({ to: "/chat" });
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) return setError(error.message);
+    router.navigate({ to: "/chat" });
   };
 
   return (

@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { TopNav } from "@/components/TopNav";
-import { api, setAuth } from "@/lib/nova-api";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/register")({ component: RegisterPage });
 
@@ -10,7 +10,6 @@ function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"user" | "ops" | "admin">("user");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -18,19 +17,17 @@ function RegisterPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    try {
-      const res = await api<{ user: any; token: string }>("/api/auth/register", {
-        method: "POST",
-        body: JSON.stringify({ name, email, password, role }),
-        auth: false,
-      });
-      setAuth({ token: res.token, user: res.user });
-      router.navigate({ to: "/chat" });
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/chat`,
+        data: { name },
+      },
+    });
+    setLoading(false);
+    if (error) return setError(error.message);
+    router.navigate({ to: "/chat" });
   };
 
   return (
@@ -43,13 +40,6 @@ function RegisterPage() {
           <L label="Name"><input value={name} onChange={(e) => setName(e.target.value)} required className="inp" /></L>
           <L label="Email"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="inp" /></L>
           <L label="Password"><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className="inp" /></L>
-          <L label="Role">
-            <select value={role} onChange={(e) => setRole(e.target.value as any)} className="inp">
-              <option value="user">user</option>
-              <option value="ops">ops</option>
-              <option value="admin">admin</option>
-            </select>
-          </L>
           <button disabled={loading} className="w-full rounded-md bg-primary py-3 font-semibold text-primary-foreground shadow-[var(--shadow-glow)] hover:opacity-90 disabled:opacity-60">
             {loading ? "Creating..." : "Create account"}
           </button>
